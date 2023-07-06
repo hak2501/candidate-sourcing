@@ -1,55 +1,33 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { EXECUTIVES_REPOSITORY, SEQUELIZE } from 'src/core/constants';
+import { Injectable } from '@nestjs/common';
 import { Executive } from './executive.entity';
 import { ExecutiveCreateDto } from './dto/executiveCreate.dto';
-import { Sequelize } from 'sequelize';
+import { ExecutivesRepository } from './executives.repo';
+import { Ok, Result, Err } from 'ts-results';
+import { ACCOUNT_ALREADY_EXISTS, FIND_ERROR } from './errors';
 
 @Injectable()
 export class ExecutivesService {
-  private models: any;
+  constructor(private readonly executivesRepository: ExecutivesRepository) {}
 
-  constructor(
-    @Inject(EXECUTIVES_REPOSITORY)
-    private readonly executivesRepository: typeof Executive,
-    @Inject(SEQUELIZE)
-    private readonly sequelize: Sequelize,
-  ) {
-    this.models = sequelize.models;
+  public async findExecutiveByEmail(
+    email: string,
+  ): Promise<Result<Executive, Error>> {
+    const executive = await this.executivesRepository.findByEmail(email);
+    if (!!!executive === true) return new Ok(executive);
+    else return new Err(Error(FIND_ERROR));
   }
 
-  private createBaseQuery() {
-    return {
-      where: {},
-      include: [],
-    };
-  }
-
-  public async findExecutiveByEmail(email: string): Promise<Executive> {
-    const baseQuery = this.createBaseQuery();
-    baseQuery.where['user_email'] = email;
-    const executive = await this.executivesRepository.findOne(baseQuery);
-    if (!!executive === true) return executive;
-    return null;
-  }
-
-  public async exists(email: string): Promise<boolean> {
-    const baseQuery = this.createBaseQuery();
-    baseQuery.where['user_email'] = email;
-    const user = await this.executivesRepository.findOne(baseQuery);
-    return !!user === true;
-  }
-
-  public async save(executive: ExecutiveCreateDto): Promise<void> {
-    const exists = await this.exists(executive.email);
+  public async createExecutive(
+    executive: ExecutiveCreateDto,
+  ): Promise<Result<boolean, Error>> {
+    const exists = await this.executivesRepository.exists(executive.email);
     if (!exists) {
       // Create new
-      await this.executivesRepository.create(executive);
+      await this.executivesRepository.save(executive);
+      return Ok(true);
     } else {
       // Save old
-      const sequelizeUserInstance = await this.executivesRepository.findOne({
-        where: { email: executive.email },
-      });
-      await sequelizeUserInstance.update(executive);
+      return Err(new Error(ACCOUNT_ALREADY_EXISTS));
     }
   }
 }

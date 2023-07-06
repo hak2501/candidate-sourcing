@@ -4,4 +4,4 @@ export const TESTING = 'testing';
 export const PRODUCTION = 'production';
 
 // Entity Constants
-export const EXECUTIVES_REPOSITORY = 'executivesRepository';
+export const EXECUTIVES_MODEL = 'executivesModel';
